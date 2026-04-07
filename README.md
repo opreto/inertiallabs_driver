@@ -3,7 +3,17 @@
 This packaged was copied from https://us.inertiallabs.com:31443/scm/ins/inertiallabs-ros2-pkgs.git
 on April 1st, 2026. On April 6th, 2026, the website was no longer accessible. 
 
-Changes:
+## How to use
+
+```bash
+ros2 run inertiallabs_ins il_ins --ros-args -p ins_url:=serial:/dev/ttyUSB0:921600 -p ins_output_format:=149
+```
+
+- We're using serial baud rate of 921600. Change if needed
+- Change `ttyUSB0` to whatever port is correct
+- Keep the `ins_output_format:=149` for user-defined-data. This lets us set what the IMU sends
+
+## Changes:
 - Made all publishers optional thru params
   - parameter options:
     - publish_imu_data <- this is what we want
@@ -14,7 +24,6 @@ Changes:
     - publish_marine_data
 - Added a new publisher that puts the 9 DOF imu data in the same message (was split across two separate subscriptions)
   - If this wasn't done, the consumer would have to receive to separate messages and align timestamps to combine them
-
 
 ---
 
