@@ -16,7 +16,6 @@
 #include <inertiallabs_msgs/msg/marine_data.hpp>
 #include <inertiallabs_msgs/msg/imu_data.hpp>
 
-// Publishers
 
 struct Context
 {
@@ -36,10 +35,7 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
 {
   Context* context = reinterpret_cast<Context*>(contextPtr);
 
-  const rclcpp::Time timestamp = context->node->now();
-  RCLCPP_INFO_STREAM(context->node->get_logger(),
-                     "Publishing data at timestamp " << timestamp.seconds() << "." << timestamp.nanoseconds());
-
+  auto timestamp = rclcpp::Time(int(data->GPS_INS_Time), int((data->GPS_INS_Time - int(data->GPS_INS_Time)) * 1e9));
   if (context->sensorDataPub && context->sensorDataPub->get_subscription_count() > 0)
   {
     inertiallabs_msgs::msg::SensorData msg_sensor_data;
@@ -245,7 +241,6 @@ int main(int argc, char** argv)
   }
 
   context.node = node;
-
   // Communication with the device
   RCLCPP_INFO(node->get_logger(), "Connecting to INS at URL %s\n", port.c_str());
 
