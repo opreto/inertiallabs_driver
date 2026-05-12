@@ -17,6 +17,7 @@ find_package(rclcpp REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(inertiallabs_msgs REQUIRED)
 
 set(DEPRECATION_FLAG "-Wsizeof-array-argument")
@@ -49,6 +50,7 @@ ament_target_dependencies(il_ins
                           sensor_msgs
                           geometry_msgs
                           tf2_ros
+                          builtin_interfaces
                           inertiallabs_msgs
 )
 

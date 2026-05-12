@@ -2,6 +2,8 @@
 #include <poll.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
 #include <cerrno>
 #include <string>
 #include <cstdio>
@@ -54,6 +56,15 @@ namespace IL {
         config.c_cflag |= CS8 | CREAD | CLOCAL;
         config.c_lflag |= IEXTEN;
         if (tcsetattr(fd, TCSANOW, &config) < 0) return 3;
+
+        // Ask the tty layer for lower latency (USB-serial may ignore TIOCSSERIAL;
+        // FTDI bulk buffering is primarily controlled via sysfs latency_timer — see README.)
+        struct serial_struct serial;
+        if (ioctl(fd, TIOCGSERIAL, &serial) == 0)
+        {
+            serial.flags |= ASYNC_LOW_LATENCY;
+            (void)ioctl(fd, TIOCSSERIAL, &serial);
+        }
         return 0;
     }
 

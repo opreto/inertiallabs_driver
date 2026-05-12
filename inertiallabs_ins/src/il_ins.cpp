@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 #include <unistd.h>
 #include <math.h>
@@ -16,10 +17,13 @@
 #include <inertiallabs_msgs/msg/marine_data.hpp>
 #include <inertiallabs_msgs/msg/imu_data.hpp>
 
+#include <builtin_interfaces/msg/time.hpp>
 
 struct Context
 {
   rclcpp::Node::SharedPtr node;
+
+  rclcpp::Publisher<builtin_interfaces::msg::Time>::SharedPtr receiveRostimePub;
 
   rclcpp::Publisher<inertiallabs_msgs::msg::GnssData>::SharedPtr gnssDataPub;
   rclcpp::Publisher<inertiallabs_msgs::msg::GpsData>::SharedPtr gpsDataPub;
@@ -34,6 +38,15 @@ struct Context
 void publishDevice(IL::INSDataStruct* data, void* contextPtr)
 {
   Context* context = reinterpret_cast<Context*>(contextPtr);
+
+  if (context->receiveRostimePub)
+  {
+    const int64_t total_ns = context->node->get_clock()->now().nanoseconds();
+    builtin_interfaces::msg::Time receive_rostime;
+    receive_rostime.sec = static_cast<int32_t>(total_ns / 1000000000LL);
+    receive_rostime.nanosec = static_cast<uint32_t>(total_ns % 1000000000LL);
+    context->receiveRostimePub->publish(receive_rostime);
+  }
 
   auto timestamp = rclcpp::Time(int(data->GPS_INS_Time), int((data->GPS_INS_Time - int(data->GPS_INS_Time)) * 1e9));
   if (context->sensorDataPub && context->sensorDataPub->get_subscription_count() > 0)
@@ -184,8 +197,8 @@ int main(int argc, char** argv)
     insOutputFormat = node->get_parameter("ins_output_format").as_int();
   }
 
-  bool publish_sensor_data = false;
-  if (node->get_parameter_or("publish_sensor_data", publish_sensor_data, false))
+  bool publish_sensor_data = true;
+  if (node->get_parameter_or("publish_sensor_data", publish_sensor_data, true))
   {
     if (publish_sensor_data)
     {
@@ -194,8 +207,8 @@ int main(int argc, char** argv)
     }
   }
 
-  bool publish_ins_data = false;
-  if (node->get_parameter_or("publish_ins_data", publish_ins_data, false))
+  bool publish_ins_data = true;
+  if (node->get_parameter_or("publish_ins_data", publish_ins_data, true))
   {
     if (publish_sensor_data)
     {
@@ -231,8 +244,8 @@ int main(int argc, char** argv)
     }
   }
 
-  bool publish_imu_data = false;
-  if (node->get_parameter_or("publish_imu_data", publish_imu_data, false))
+  bool publish_imu_data = true;
+  if (node->get_parameter_or("publish_imu_data", publish_imu_data, true))
   {
     if (publish_imu_data)
     {
@@ -241,6 +254,9 @@ int main(int argc, char** argv)
   }
 
   context.node = node;
+  context.receiveRostimePub =
+      node->create_publisher<builtin_interfaces::msg::Time>("/IntertialLabs/receive_rostime", 1);
+
   // Communication with the device
   RCLCPP_INFO(node->get_logger(), "Connecting to INS at URL %s\n", port.c_str());
 
