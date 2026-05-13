@@ -17,7 +17,7 @@
 #include <inertiallabs_msgs/msg/marine_data.hpp>
 #include <inertiallabs_msgs/msg/imu_data.hpp>
 
-#include <builtin_interfaces/msg/time.hpp>
+// #include <builtin_interfaces/msg/time.hpp>
 
 struct Context
 {
@@ -39,12 +39,13 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
 {
   Context* context = reinterpret_cast<Context*>(contextPtr);
 
+  const int64_t total_ns = context->node->get_clock()->now().nanoseconds();
+  builtin_interfaces::msg::Time receive_rostime;
+  receive_rostime.sec = static_cast<int32_t>(total_ns / 1000000000LL);
+  receive_rostime.nanosec = static_cast<uint32_t>(total_ns % 1000000000LL);
+
   if (context->receiveRostimePub)
   {
-    const int64_t total_ns = context->node->get_clock()->now().nanoseconds();
-    builtin_interfaces::msg::Time receive_rostime;
-    receive_rostime.sec = static_cast<int32_t>(total_ns / 1000000000LL);
-    receive_rostime.nanosec = static_cast<uint32_t>(total_ns % 1000000000LL);
     context->receiveRostimePub->publish(receive_rostime);
   }
 
@@ -157,9 +158,14 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
   }
   if (context->imuDataPub && context->imuDataPub->get_subscription_count() > 0)
   {
+    // NOTE: we're using ROSTIME here instead of timestamp reported by the IMU because we don't have a mechanism
+    // to sync imu time with ROSTIME yet. So we're just stamping the packet with current ROSTIME on receipt.
+    // This has some intrinsic latency and jitter, so should be upgraded in the future. GPS_INS_Time, the value
+    // received from the IMU is also included in the published message
     inertiallabs_msgs::msg::ImuData msg_imu_data;
-    msg_imu_data.header.stamp = timestamp;
+    msg_imu_data.header.stamp = receive_rostime;
     msg_imu_data.header.frame_id = context->imuFrameId;
+    msg_imu_data.imu_time_s = timestamp.seconds();
     msg_imu_data.ypr.x = data->Heading;
     msg_imu_data.ypr.y = data->Pitch;
     msg_imu_data.ypr.z = data->Roll;
@@ -169,6 +175,10 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
     msg_imu_data.gyro.x = data->Gyro[0];
     msg_imu_data.gyro.y = data->Gyro[1];
     msg_imu_data.gyro.z = data->Gyro[2];
+    msg_imu_data.quat.w = data->Quat[0];
+    msg_imu_data.quat.x = data->Quat[1];
+    msg_imu_data.quat.y = data->Quat[2];
+    msg_imu_data.quat.z = data->Quat[3];
     context->imuDataPub->publish(msg_imu_data);
   }
 }
