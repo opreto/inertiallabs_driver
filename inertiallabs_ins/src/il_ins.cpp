@@ -16,7 +16,6 @@
 #include <inertiallabs_msgs/msg/marine_data.hpp>
 #include <inertiallabs_msgs/msg/imu_data.hpp>
 
-
 struct Context
 {
   rclcpp::Node::SharedPtr node;
@@ -156,6 +155,10 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
     msg_imu_data.gyro.x = data->Gyro[0];
     msg_imu_data.gyro.y = data->Gyro[1];
     msg_imu_data.gyro.z = data->Gyro[2];
+    msg_imu_data.quat.w = data->Quat[0];
+    msg_imu_data.quat.x = data->Quat[1];
+    msg_imu_data.quat.y = data->Quat[2];
+    msg_imu_data.quat.z = data->Quat[3];
     context->imuDataPub->publish(msg_imu_data);
   }
 }
