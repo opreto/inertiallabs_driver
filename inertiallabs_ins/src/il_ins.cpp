@@ -34,7 +34,7 @@ void publishDevice(IL::INSDataStruct* data, void* contextPtr)
 {
   Context* context = reinterpret_cast<Context*>(contextPtr);
 
-  auto timestamp = rclcpp::Time(int(data->GPS_INS_Time), int((data->GPS_INS_Time - int(data->GPS_INS_Time)) * 1e9));
+  auto timestamp = context->node->get_clock()->now();
   if (context->sensorDataPub && context->sensorDataPub->get_subscription_count() > 0)
   {
     inertiallabs_msgs::msg::SensorData msg_sensor_data;
