@@ -13,6 +13,39 @@ ros2 run inertiallabs_ins il_ins --ros-args -p ins_url:=serial:/dev/ttyUSB0:9216
 - Change `ttyUSB0` to whatever port is correct
 - Keep the `ins_output_format:=149` for user-defined-data. This lets us set what the IMU sends
 
+### Valid User Defined Types
+
+_Documentation: https://www.scribd.com/document/904589970/Kernel-ICD-Rev-1-42-May-2025-Copy-2_
+
+The supposed valid user defined types are screen-shotted [here](ros2_ws/src/external/inertiallabs_driver/inertiallabs_available_user_defined_types_1.png) and [here](ros2_ws/src/external/inertiallabs_driver/inertiallabs_available_user_defined_types_2.png)
+
+**Of these, only the following are valid!:**
+- GPS_INS_Time
+- Orientation Angles
+- Orientation Angles HR
+- Quaternion of Orientation
+- Gyro Data
+- Gyro Data HR
+- Accelerometer Data
+- Accelerometer Data HR
+
+If you select anything else, the way the parser library is written, all the data will be silently corrupted!
+You can always select a subset. 
+
+This happens because of how [UDDParser](ros2_ws/src/external/inertiallabs_driver/inertiallabs_sdk/UDDParser.cpp) is parsing the incoming data. 
+
+1. `Driver::readerLoop()` in [ILDriver](ros2_ws/src/external/inertiallabs_driver/inertiallabs_sdk/ILDriver.cpp) reads and parses raw data. From there, it determines the `code` corresponding to the data-type of this packet and sets it to UDDParser::code (line 278).
+
+2. If the driver was launched with ins_output_format:=149 (user defined data), then the [UDDParser]() will be used. The `code` is read in the `UDDParser::parse()` function to determine how to interpret the incoming data.
+
+3. When in UDD Mode, the first byte contains the length of the data-type codes, then the next N bytes contain the codes, then the rest of the bytes contain the actual data
+
+```
+num_bytes_for_codes | code_1 | code_2 | ... | code_N | data_byte_1 | data_byte_2 | ... | data_byte_N
+```
+
+4. `UDDParser::writeTxtAndData()` iterates over all the `codes` and reinterprets the data_bytes accordingly. The issue happens when a `code` doesn't have a corresponding `switch-case`. Instead of throwing or failing, it's simply skipped, without advancing the data pointer. All subsequent parses are now corrupted!
+
 ## Changes:
 - Made all publishers optional thru params
   - parameter options:
@@ -24,6 +57,9 @@ ros2 run inertiallabs_ins il_ins --ros-args -p ins_url:=serial:/dev/ttyUSB0:9216
     - publish_marine_data
 - Added a new publisher that puts the 9 DOF imu data in the same message (was split across two separate subscriptions)
   - If this wasn't done, the consumer would have to receive to separate messages and align timestamps to combine them
+
+
+
 
 ---
 
